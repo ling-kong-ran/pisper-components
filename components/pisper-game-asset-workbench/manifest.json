@@ -1,0 +1,11 @@
+{
+  "name": "Game Asset Workbench",
+  "version": "1.0.0",
+  "description": "游戏素材工作台：生成动作、逐帧编辑并导出图集 / Independent game asset projects and frame editing",
+  "entry": "index.html",
+  "permissions": [
+    "game-assets.read",
+    "game-assets.write",
+    "game-assets.run"
+  ]
+}
