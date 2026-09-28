@@ -205,11 +205,13 @@
   }
   function renderActions() {
     var container = el('actions'); container.replaceChildren()
-    draft.actions.forEach(function (action,index) {
+    draft.actions.forEach(function (action) {
       var box = document.createElement('div'), row = document.createElement('div'), enabled = document.createElement('input'), name = document.createElement('input'), remove = document.createElement('button'), prompt = document.createElement('textarea')
       box.className = 'action'; row.className = 'row'; enabled.type = 'checkbox'; enabled.checked = action.enabled; enabled.setAttribute('aria-label',words().enabled + ' · ' + action.name); name.type = 'text'; name.value = action.name; name.maxLength = 100; name.setAttribute('aria-label',words().actionName); prompt.value = action.prompt; prompt.maxLength = 2000; prompt.setAttribute('aria-label',words().actionPrompt); remove.type = 'button'; remove.className = 'icon'; remove.textContent = '×'; remove.setAttribute('aria-label',words().removeAction + ' · ' + action.name)
       ;[enabled,name,remove,prompt].forEach(function (node) { node.setAttribute('data-write','') })
-      enabled.addEventListener('change',function () { action.enabled = enabled.checked; changed() }); name.addEventListener('input',function () { action.name = name.value; changed() }); prompt.addEventListener('input',function () { action.prompt = prompt.value; changed() }); remove.addEventListener('click',function () { draft.actions.splice(index,1); renderActions(); changed(); el('add-action').focus() })
+      // 保存会替换 draft；事件按稳定 ID 查找当前动作，不能写入已失效的对象引用。
+      function updateAction(patch) { var current = draft && draft.actions.find(function (item) { return item.id === action.id }); if (!current) return; Object.assign(current,patch); changed() }
+      enabled.addEventListener('change',function () { updateAction({enabled:enabled.checked}) }); name.addEventListener('input',function () { updateAction({name:name.value}) }); prompt.addEventListener('input',function () { updateAction({prompt:prompt.value}) }); remove.addEventListener('click',function () { draft.actions = draft.actions.filter(function (item) { return item.id !== action.id }); renderActions(); changed(); el('add-action').focus() })
       row.append(enabled,name,remove); box.append(row,prompt); container.append(box)
     })
   }
@@ -309,7 +311,7 @@
     var selected = generation, payload = copy(draft); delete payload.createdAt; delete payload.updatedAt; busy = true; message('working'); renderLocks()
     try {
       var saved = await bridge.save(payload); if (disposed || selected !== generation) return
-      draft = copy(saved); dirty = false; var index = projects.findIndex(function (project) { return project.id === saved.id }); if (index >= 0) projects[index] = saved; else projects.unshift(saved); renderProjectOptions(); message('saved')
+      draft = copy(saved); dirty = false; var index = projects.findIndex(function (project) { return project.id === saved.id }); if (index >= 0) projects[index] = saved; else projects.unshift(saved); renderProjectOptions(); renderDirections(); renderActions(); renderCount(); message('saved')
       if (andRun) { var result = await bridge.run({id:saved.id}); if (disposed || selected !== generation) return; if (result && result.job) jobs.unshift(result.job); renderResults() }
       await refresh()
     } catch { if (!disposed && generation === selected) message('error') } finally { if (!disposed && generation === selected) { busy = false; renderLocks() } }
